@@ -9,6 +9,7 @@
     :root { --pink:#ff4fa3; --gold:#ffd166; --ink:#fff7fb; }
     * { box-sizing:border-box; }
     html,body { width:100%; min-height:100%; margin:0; overflow-x:hidden; overflow-y:auto; background:#080516; color:var(--ink); scroll-behavior:smooth; }
+    body.locked { overflow:hidden; }
     body { font-family:"Noto Serif SC",serif; }
     #sky { position:fixed; inset:0; z-index:20; pointer-events:none; }
     .aurora { position:fixed; inset:-30%; z-index:0; background:radial-gradient(circle at 30% 35%,#5d1f8f66 0 13%,transparent 30%),radial-gradient(circle at 70% 60%,#ec3b8466 0 12%,transparent 35%),radial-gradient(circle at 50% 50%,#eebd5266 0 8%,transparent 26%); filter:blur(35px); animation:drift 12s ease-in-out infinite alternate; }
@@ -39,7 +40,7 @@
       .signature { margin-top:14px; font-size:24px; }
       button { margin-top:16px; padding:11px 20px; }
     }
-    .lock { position:fixed; inset:0; z-index:30; display:grid; place-items:center; padding:24px; background:radial-gradient(circle at 25% 25%,#6c25664d,transparent 30%),radial-gradient(circle at 80% 75%,#b1578140,transparent 31%),#080516e8; transition:opacity .75s ease,visibility .75s; }
+    .lock { position:fixed; inset:0; z-index:30; display:grid; place-items:center; padding:24px; background:radial-gradient(circle at 25% 25%,#32162f,transparent 38%),radial-gradient(circle at 80% 75%,#261643,transparent 40%),#080516; transition:opacity .75s ease,visibility .75s; }
     .lock.open { opacity:0; visibility:hidden; }
     .lock-card { width:min(590px,100%); padding:clamp(33px,6vw,54px); text-align:center; border:1px solid #ffffff4a; border-radius:31px; background:linear-gradient(135deg,#ffffff1f,#ffffff09); box-shadow:0 24px 70px #0009; backdrop-filter:blur(15px); }
     .lock-tag { color:#ffd5e7; font-size:12px; letter-spacing:.25em; }
@@ -51,9 +52,22 @@
     .pass-row button { margin:0; padding:0 21px; white-space:nowrap; }
     #error { height:18px; margin:14px 0 0; color:#ffb8d5; font-size:13px; opacity:0; transition:.2s; }
     #error.show { opacity:1; }
+    .envelope-stage { position:fixed; inset:0; z-index:30; display:grid; place-items:center; padding:24px; background:radial-gradient(circle at 50% 42%,#44214d 0,transparent 42%),#080516; opacity:0; visibility:hidden; pointer-events:none; transition:opacity .6s ease,visibility .6s; }
+    .envelope-stage.show { opacity:1; visibility:visible; pointer-events:auto; }
+    .envelope-wrap { text-align:center; animation:rise .7s cubic-bezier(.16,1,.3,1) both; }
+    .envelope-note { margin:0 0 23px; color:#f6dce9; font-size:15px; letter-spacing:.12em; }
+    .envelope { position:relative; width:min(370px,82vw); aspect-ratio:1.48; border:0; border-radius:6px; cursor:pointer; background:linear-gradient(145deg,#f5e0d4,#dfbfb4); box-shadow:0 24px 50px #000a, inset 0 0 35px #fff8; transition:transform .45s ease,filter .3s; overflow:hidden; }
+    .envelope:hover { transform:translateY(-7px) rotate(-1deg); filter:brightness(1.07); }
+    .envelope:before { content:""; position:absolute; inset:0; background:linear-gradient(35deg,transparent 49.5%,#cdaaa1 50%,transparent 50.5%),linear-gradient(-35deg,transparent 49.5%,#cdaaa1 50%,transparent 50.5%); opacity:.66; }
+    .envelope-flap { position:absolute; inset:0; clip-path:polygon(0 0,100% 0,50% 62%); background:linear-gradient(#efd6ca,#d8afa8); transform-origin:top; transition:transform .65s ease; z-index:2; }
+    .rose { position:absolute; z-index:3; top:27%; left:50%; transform:translateX(-50%); font-size:68px; filter:drop-shadow(0 5px 5px #76223a70); transition:.5s; }
+    .envelope-label { position:absolute; z-index:3; left:50%; bottom:21%; transform:translateX(-50%); width:65%; color:#683244; font:20px "Ma Shan Zheng",cursive; transition:.5s; }
+    .envelope.opening .envelope-flap { transform:rotateX(175deg); }
+    .envelope.opening .rose,.envelope.opening .envelope-label { transform:translateX(-50%) translateY(-58px); opacity:0; }
+    .open-tip { margin:19px 0 0; color:#ffffff91; font-size:13px; letter-spacing:.14em; }
   </style>
 </head>
-<body>
+<body class="locked">
   <canvas id="sky"></canvas><div class="aurora"></div>
   <section class="lock" id="lock">
     <div class="lock-card">
@@ -62,6 +76,13 @@
       <p>输入密码，打开这一页被妥善收藏的祝福。</p>
       <div class="pass-row"><input id="password" type="password" autocomplete="off" placeholder="请输入访问密码" aria-label="访问密码"><button id="unlock">开启这封信</button></div>
       <div id="error">这封信还没到打开的时候。</div>
+    </div>
+  </section>
+  <section class="envelope-stage" id="envelope-stage" aria-hidden="true">
+    <div class="envelope-wrap">
+      <p class="envelope-note">密码正确 · 有一封信在等你</p>
+      <button class="envelope" id="envelope" aria-label="打开写给席雨晨的信"><span class="envelope-flap"></span><span class="rose">🌹</span><span class="envelope-label">写给席雨晨</span></button>
+      <p class="open-tip">点击信封，拆开这封信</p>
     </div>
   </section>
   <main>
@@ -89,7 +110,9 @@
     function hearts(n){for(let i=0;i<n;i++){let h=document.createElement('span');h.className='heart';h.textContent='♥';h.style.left=Math.random()*100+'vw';h.style.top=(75+Math.random()*25)+'vh';h.style.fontSize=(14+Math.random()*25)+'px';h.style.setProperty('--x',(-20+Math.random()*40)+'vw');h.style.animationDuration=(3+Math.random()*3)+'s';document.body.append(h);setTimeout(()=>h.remove(),6200)}}
     setTimeout(()=>{for(let i=0;i<5;i++)setTimeout(fire,i*270)},500);
     const pass=document.querySelector('#password'), error=document.querySelector('#error');
-    async function unlock(){const bytes=new TextEncoder().encode(pass.value);const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))).map(v=>v.toString(16).padStart(2,'0')).join('');if(hash==='6e4c895b94d0929e46edaf7c9f2b2fd2fa56c3b007362fde6546ebad22fd9b8c'){document.querySelector('#lock').classList.add('open');for(let i=0;i<11;i++)setTimeout(()=>fire(),i*110);hearts(22)}else{error.classList.add('show');pass.value='';pass.focus()}}
+    const lock=document.querySelector('#lock'),stage=document.querySelector('#envelope-stage'),envelope=document.querySelector('#envelope');
+    async function unlock(){const bytes=new TextEncoder().encode(pass.value);const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))).map(v=>v.toString(16).padStart(2,'0')).join('');if(hash==='6e4c895b94d0929e46edaf7c9f2b2fd2fa56c3b007362fde6546ebad22fd9b8c'){lock.classList.add('open');setTimeout(()=>{stage.classList.add('show');stage.setAttribute('aria-hidden','false')},420)}else{error.classList.add('show');pass.value='';pass.focus()}}
+    envelope.onclick=()=>{envelope.classList.add('opening');setTimeout(()=>{stage.classList.remove('show');document.body.classList.remove('locked');for(let i=0;i<11;i++)setTimeout(()=>fire(),i*110);hearts(22)},700)};
     document.querySelector('#unlock').onclick=unlock;pass.addEventListener('keydown',e=>{if(e.key==='Enter')unlock()});
   </script>
 </body>
